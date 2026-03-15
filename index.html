@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spit - Card Game</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at center, #2a7a3e 0%, #0d4a1a 100%);
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 10px;
+      gap: 8px;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 2.4em;
+      letter-spacing: 6px;
+      text-shadow: 0 0 20px rgba(255,200,0,0.4), 2px 2px 6px #000;
+      color: #ffd700;
+    }
+
+    #status {
+      font-size: 1em;
+      min-height: 1.4em;
+      text-align: center;
+      text-shadow: 1px 1px 3px #000;
+      padding: 4px 12px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+    }
+
+    .game-area {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 0.85em;
+      opacity: 0.75;
+      letter-spacing: 1px;
+    }
+
+    .player-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* Tableau */
+    .tableau-area {
+      display: flex;
+      gap: 7px;
+      flex-wrap: nowrap;
+    }
+
+    .pile-col {
+      position: relative;
+      width: 66px;
+      min-height: 95px;
+      flex-shrink: 0;
+    }
+
+    /* Cards */
+    .card {
+      position: absolute;
+      left: 0;
+      width: 66px;
+      height: 93px;
+      border-radius: 7px;
+      border: 1.5px solid #999;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3px 4px;
+      font-weight: bold;
+      box-shadow: 1px 2px 5px rgba(0,0,0,0.5);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .card.face-down {
+      background: repeating-linear-gradient(
+        135deg,
+        #1a2a7e,
+        #1a2a7e 6px,
+        #2a3eb0 6px,
+        #2a3eb0 12px
+      );
+      border-color: #0a1a5e;
+      cursor: default;
+    }
+
+    .card.red { color: #c80000; }
+    .card.black { color: #111; }
+
+    .card.clickable { cursor: pointer; }
+    .card.clickable:hover { transform: translateY(-4px); box-shadow: 2px 5px 10px rgba(0,0,0,0.6); }
+
+    .card.selected {
+      border-color: #ffd700 !important;
+      box-shadow: 0 0 14px #ffd700, 1px 2px 5px rgba(0,0,0,0.5) !important;
+      transform: translateY(-10px) !important;
+      z-index: 200 !important;
+    }
+
+    .corner { font-size: 11px; line-height: 1.1; }
+    .corner.tl { align-self: flex-start; }
+    .corner.br { align-self: flex-end; transform: rotate(180deg); }
+    .suit-center { align-self: center; font-size: 26px; line-height: 1; }
+
+    .empty-pile {
+      position: absolute;
+      top: 0; left: 0;
+      width: 66px; height: 93px;
+      border-radius: 7px;
+      border: 2px dashed rgba(255,255,255,0.18);
+    }
+
+    /* Spit pile */
+    .spit-pile-slot {
+      position: relative;
+      width: 66px;
+      height: 93px;
+      border-radius: 7px;
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      flex-shrink: 0;
+    }
+
+    .spit-pile-slot .card {
+      position: absolute;
+      top: 0; left: 0;
+      cursor: default;
+    }
+
+    .card-badge {
+      position: absolute;
+      top: -7px; right: -7px;
+      background: #333;
+      color: #fff;
+      font-size: 10px;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 0 3px;
+      border: 1px solid #555;
+    }
+
+    /* Center area */
+    .center-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 60px;
+      padding: 8px 0;
+    }
+
+    .center-pile-slot {
+      position: relative;
+      width: 66px;
+      height: 93px;
+      border-radius: 7px;
+      border: 2px dashed rgba(255,255,255,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .center-pile-slot.highlight {
+      border-color: rgba(255,220,0,0.6);
+      box-shadow: 0 0 12px rgba(255,220,0,0.3);
+    }
+
+    .center-pile-slot .card {
+      position: absolute;
+      top: 0; left: 0;
+      cursor: pointer;
+    }
+
+    .center-pile-slot .card:hover {
+      transform: none;
+    }
+
+    /* Dividers */
+    .divider {
+      width: 100%;
+      max-width: 760px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-top: 6px;
+      align-items: center;
+    }
+
+    button {
+      padding: 10px 24px;
+      font-size: 1.05em;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 1px;
+    }
+
+    #spit-btn {
+      background: #b52200;
+      color: #fff;
+      font-size: 1.2em;
+      letter-spacing: 3px;
+      min-width: 110px;
+    }
+    #spit-btn:not(:disabled):hover { background: #e03000; transform: scale(1.05); }
+    #spit-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+    #spit-btn.pulse { animation: pulse 0.7s ease-in-out infinite; }
+
+    #new-game-btn { background: #1a5c2a; color: #fff; }
+    #new-game-btn:hover { background: #2a7c3a; }
+
+    @keyframes pulse {
+      0%, 100% { background: #b52200; transform: scale(1); }
+      50% { background: #ff3300; transform: scale(1.08); }
+    }
+
+    /* Instructions */
+    .instructions {
+      font-size: 0.8em;
+      opacity: 0.6;
+      text-align: center;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* CPU thinking indicator */
+    .cpu-thinking {
+      font-size: 0.75em;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .cpu-thinking.active { opacity: 0.7; }
+  </style>
+</head>
+<body>
+
+<h1>SPIT</h1>
+<div id="status">Click "New Game" to start!</div>
+
+<div class="game-area">
+
+  <!-- CPU Section -->
+  <div class="section-label">
+    CPU &nbsp;<span id="cpu-card-count">0</span> cards remaining
+    <span class="cpu-thinking" id="cpu-thinking">&nbsp;● thinking…</span>
+  </div>
+  <div class="player-row" id="cpu-row">
+    <div class="spit-pile-slot" id="cpu-spit-slot" title="CPU's spit pile"></div>
+    <div class="tableau-area" id="cpu-tableau"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Center piles -->
+  <div class="center-row">
+    <div class="center-pile-slot" id="center-0" onclick="handleCenterClick(0)" title="Click to play selected card here"></div>
+    <div class="center-pile-slot" id="center-1" onclick="handleCenterClick(1)" title="Click to play selected card here"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Player Section -->
+  <div class="player-row" id="player-row">
+    <div class="tableau-area" id="player-tableau"></div>
+    <div class="spit-pile-slot" id="player-spit-slot" title="Your spit pile"></div>
+  </div>
+  <div class="section-label">YOU &nbsp;<span id="player-card-count">0</span> cards remaining</div>
+
+</div>
+
+<div class="controls">
+  <button id="spit-btn" onclick="doSpit()" disabled>SPIT!</button>
+  <button id="new-game-btn" onclick="newGame()">New Game</button>
+</div>
+
+<div class="instructions">
+  <strong>How to play:</strong> Click a card in your tableau to select it (gold glow),
+  then click a center pile to play it. A card can be played if its value is ±1 of the center pile's top card
+  (Ace wraps with King). When no one can move, click <strong>SPIT!</strong>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────
+const SUITS = ['♠', '♥', '♦', '♣'];
+const VNAME = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+// ─── Game state ───────────────────────────────────────────────
+let G = {
+  playerTableau: [[], [], [], [], []],
+  cpuTableau:    [[], [], [], [], []],
+  playerSpit: [],
+  cpuSpit:    [],
+  centerPiles: [[], []],
+  selected: null,   // pileIndex (player tableau)
+  phase: 'idle',    // 'idle' | 'playing'
+  over: false,
+};
+
+let aiTimer = null;
+let deadlockTimer = null;
+let aiActive = false;
+
+// ─── Helpers ──────────────────────────────────────────────────
+function isRed(card) { return card.suit === '♥' || card.suit === '♦'; }
+
+function top(pile) { return pile.length ? pile[pile.length - 1] : null; }
+
+function canPlay(card, centerPile) {
+  const t = top(centerPile);
+  if (!t) return false;
+  const d = Math.abs(card.value - t.value);
+  return d === 1 || d === 12; // 12 handles Ace↔King wrap
+}
+
+function countAll(tableau, spit) {
+  return tableau.reduce((s, p) => s + p.length, 0) + spit.length;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ─── Setup ────────────────────────────────────────────────────
+function makeDeck() {
+  const d = [];
+  for (const s of SUITS)
+    for (let v = 1; v <= 13; v++)
+      d.push({ suit: s, value: v });
+  return d;
+}
+
+function buildTableau(cards) {
+  // 5 piles: 1,2,3,4,5 cards (top face-up)
+  const t = [];
+  let i = 0;
+  for (let p = 0; p < 5; p++) {
+    const pile = [];
+    for (let j = 0; j <= p; j++)
+      pile.push({ ...cards[i++], faceUp: j === p });
+    t.push(pile);
+  }
+  return t;  // uses 15 cards; remaining 11 are spit pile
+}
+
+function newGame() {
+  clearTimers();
+  G.over = false;
+  G.selected = null;
+  G.phase = 'playing';
+
+  const deck = shuffle(makeDeck());
+  const pc = deck.slice(0, 26);
+  const cc = deck.slice(26);
+
+  G.playerTableau = buildTableau(pc);
+  G.playerSpit    = pc.slice(15);
+  G.cpuTableau    = buildTableau(cc);
+  G.cpuSpit       = cc.slice(15);
+
+  // Initial "spit" to populate center piles
+  G.centerPiles = [[], []];
+  if (G.playerSpit.length) G.centerPiles[0].push({ ...G.playerSpit.shift(), faceUp: true });
+  if (G.cpuSpit.length)    G.centerPiles[1].push({ ...G.cpuSpit.shift(), faceUp: true });
+
+  document.getElementById('spit-btn').disabled = false;
+  document.getElementById('spit-btn').classList.remove('pulse');
+
+  setStatus('Game on! Select a card, then click a center pile to play.');
+  render();
+  startAI();
+  startDeadlockCheck();
+}
+
+// ─── Player actions ───────────────────────────────────────────
+function playerSelectCard(pileIdx) {
+  if (G.phase !== 'playing' || G.over) return;
+  const pile = G.playerTableau[pileIdx];
+  if (!pile.length) return;
+  const t = top(pile);
+  if (!t.faceUp) return;
+
+  G.selected = (G.selected === pileIdx) ? null : pileIdx;
+  highlightCenterPiles();
+  render();
+}
+
+function handleCenterClick(ci) {
+  if (G.phase !== 'playing' || G.over || G.selected === null) return;
+
+  const pile = G.playerTableau[G.selected];
+  if (!pile.length) return;
+  const card = top(pile);
+
+  if (!canPlay(card, G.centerPiles[ci])) {
+    setStatus('Cannot play there — must be ±1 of the top card (Ace wraps with King).');
+    return;
+  }
+
+  pile.pop();
+  G.centerPiles[ci].push({ ...card, faceUp: true });
+  if (pile.length) pile[pile.length - 1].faceUp = true;
+
+  G.selected = null;
+  setStatus('Card played!');
+  highlightCenterPiles();
+  checkWin();
+  render();
+}
+
+function doSpit() {
+  if (G.over) return;
+  let happened = false;
+
+  if (G.playerSpit.length) {
+    G.centerPiles[0].push({ ...G.playerSpit.shift(), faceUp: true });
+    happened = true;
+  }
+  if (G.cpuSpit.length) {
+    G.centerPiles[1].push({ ...G.cpuSpit.shift(), faceUp: true });
+    happened = true;
+  }
+
+  if (!happened) {
+    endByCount();
+    return;
+  }
+
+  G.selected = null;
+  document.getElementById('spit-btn').classList.remove('pulse');
+  setStatus('SPIT! New center cards revealed.');
+  render();
+}
+
+// ─── AI ───────────────────────────────────────────────────────
+function startAI() {
+  clearInterval(aiTimer);
+  aiTimer = setInterval(aiTick, 750);
+}
+
+function aiTick() {
+  if (G.phase !== 'playing' || G.over || aiActive) return;
+
+  for (let pi = 0; pi < 5; pi++) {
+    const pile = G.cpuTableau[pi];
+    if (!pile.length) continue;
+    const card = top(pile);
+    if (!card.faceUp) continue;
+
+    for (let ci = 0; ci < 2; ci++) {
+      if (canPlay(card, G.centerPiles[ci])) {
+        aiActive = true;
+        showAIThinking(true);
+
+        setTimeout(() => {
+          // Re-validate in case state changed
+          const p = G.cpuTableau[pi];
+          if (!p.length) { aiActive = false; showAIThinking(false); return; }
+          const c = top(p);
+          if (c.faceUp && canPlay(c, G.centerPiles[ci])) {
+            p.pop();
+            G.centerPiles[ci].push({ ...c, faceUp: true });
+            if (p.length) p[p.length - 1].faceUp = true;
+            checkWin();
+            render();
+          }
+          aiActive = false;
+          showAIThinking(false);
+        }, 350);
+        return;
+      }
+    }
+  }
+}
+
+function showAIThinking(on) {
+  document.getElementById('cpu-thinking').classList.toggle('active', on);
+}
+
+// ─── Deadlock detection ───────────────────────────────────────
+function startDeadlockCheck() {
+  clearInterval(deadlockTimer);
+  deadlockTimer = setInterval(checkDeadlock, 1800);
+}
+
+function hasMoves(tableau) {
+  for (const pile of tableau) {
+    const c = top(pile);
+    if (!c || !c.faceUp) continue;
+    for (const cp of G.centerPiles)
+      if (canPlay(c, cp)) return true;
+  }
+  return false;
+}
+
+let autoSpitTimeout = null;
+
+function checkDeadlock() {
+  if (G.over) return;
+  const stuck = !hasMoves(G.playerTableau) && !hasMoves(G.cpuTableau);
+  const btn = document.getElementById('spit-btn');
+
+  if (stuck) {
+    btn.classList.add('pulse');
+    if (!G.playerSpit.length && !G.cpuSpit.length) {
+      endByCount();
+      return;
+    }
+    setStatus('No moves! Click SPIT! to reveal new center cards.');
+    // Auto-spit if player doesn't after 4 seconds
+    if (!autoSpitTimeout) {
+      autoSpitTimeout = setTimeout(() => {
+        autoSpitTimeout = null;
+        if (!G.over && !hasMoves(G.playerTableau) && !hasMoves(G.cpuTableau)) {
+          doSpit();
+        }
+      }, 4000);
+    }
+  } else {
+    btn.classList.remove('pulse');
+    if (autoSpitTimeout) { clearTimeout(autoSpitTimeout); autoSpitTimeout = null; }
+  }
+}
+
+// ─── Win / end ────────────────────────────────────────────────
+function checkWin() {
+  const pDone = G.playerTableau.every(p => !p.length) && !G.playerSpit.length;
+  const cDone = G.cpuTableau.every(p => !p.length) && !G.cpuSpit.length;
+
+  if (pDone && cDone) endGame(null); // shouldn't happen but handle it
+  else if (pDone) endGame('player');
+  else if (cDone) endGame('cpu');
+}
+
+function endGame(winner) {
+  G.over = true;
+  G.phase = 'idle';
+  clearTimers();
+  document.getElementById('spit-btn').disabled = true;
+  document.getElementById('spit-btn').classList.remove('pulse');
+  showAIThinking(false);
+
+  if (winner === 'player') setStatus('🎉 YOU WIN! You cleared all your cards!');
+  else if (winner === 'cpu') setStatus('CPU wins! Better luck next time.');
+  else setStatus("It's a tie!");
+  render();
+}
+
+function endByCount() {
+  G.over = true;
+  G.phase = 'idle';
+  clearTimers();
+  document.getElementById('spit-btn').disabled = true;
+  document.getElementById('spit-btn').classList.remove('pulse');
+  showAIThinking(false);
+
+  const pc = countAll(G.playerTableau, G.playerSpit);
+  const cc = countAll(G.cpuTableau, G.cpuSpit);
+
+  if (pc < cc) setStatus(`No spit cards left! YOU WIN — ${pc} vs CPU's ${cc} remaining.`);
+  else if (cc < pc) setStatus(`No spit cards left! CPU wins — ${cc} vs your ${pc} remaining.`);
+  else setStatus(`No spit cards left! Tie — both have ${pc} cards.`);
+  render();
+}
+
+function clearTimers() {
+  clearInterval(aiTimer);
+  clearInterval(deadlockTimer);
+  if (autoSpitTimeout) { clearTimeout(autoSpitTimeout); autoSpitTimeout = null; }
+  aiActive = false;
+}
+
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+// ─── Highlight helpers ────────────────────────────────────────
+function highlightCenterPiles() {
+  if (G.selected === null) {
+    document.getElementById('center-0').classList.remove('highlight');
+    document.getElementById('center-1').classList.remove('highlight');
+    return;
+  }
+  const pile = G.playerTableau[G.selected];
+  if (!pile.length) return;
+  const card = top(pile);
+  for (let ci = 0; ci < 2; ci++) {
+    const slot = document.getElementById('center-' + ci);
+    slot.classList.toggle('highlight', canPlay(card, G.centerPiles[ci]));
+  }
+}
+
+// ─── Rendering ────────────────────────────────────────────────
+function cardHTML(card, extraClass, onclickAttr) {
+  const cls = ['card'];
+  if (!card.faceUp) {
+    cls.push('face-down');
+  } else {
+    cls.push(isRed(card) ? 'red' : 'black');
+    if (onclickAttr) cls.push('clickable');
+  }
+  if (extraClass) cls.push(extraClass);
+
+  const onclick = onclickAttr ? ` onclick="${onclickAttr}"` : '';
+
+  if (!card.faceUp) {
+    return `<div class="${cls.join(' ')}"${onclick}></div>`;
+  }
+
+  const v = VNAME[card.value];
+  const s = card.suit;
+  return `<div class="${cls.join(' ')}"${onclick}>
+    <span class="corner tl">${v}<br>${s}</span>
+    <span class="suit-center">${s}</span>
+    <span class="corner br">${v}<br>${s}</span>
+  </div>`;
+}
+
+function renderTableau(containerId, tableau, owner) {
+  const OVERLAP = 20;
+  let html = '';
+
+  for (let pi = 0; pi < 5; pi++) {
+    const pile = tableau[pi];
+    const h = pile.length ? (93 + (pile.length - 1) * OVERLAP) : 93;
+    html += `<div class="pile-col" style="height:${h}px">`;
+
+    if (!pile.length) {
+      html += '<div class="empty-pile"></div>';
+    } else {
+      for (let j = 0; j < pile.length; j++) {
+        const card = pile[j];
+        const isTop = j === pile.length - 1;
+        const isSelected = owner === 'player' && isTop && G.selected === pi;
+        const extraClass = isSelected ? 'selected' : '';
+        const onclick = (owner === 'player' && isTop && card.faceUp)
+          ? `playerSelectCard(${pi})`
+          : '';
+
+        const zIndex = ` style="top:${j * OVERLAP}px;z-index:${j};"`;
+        // Inject z-index and top into the card div
+        let c = cardHTML(card, extraClass, onclick);
+        c = c.replace('<div class="card', `<div class="card`);
+        // Insert style into first div tag
+        c = c.replace(/^<div /, `<div ${zIndex.trim()} `);
+        html += c;
+      }
+    }
+    html += '</div>';
+  }
+
+  document.getElementById(containerId).innerHTML = html;
+}
+
+function renderSpitSlot(slotId, pile) {
+  const slot = document.getElementById(slotId);
+  if (!pile.length) {
+    slot.innerHTML = 'Empty';
+    return;
+  }
+  // Show a face-down card on top + count badge
+  const badgeHTML = `<div class="card-badge">${pile.length}</div>`;
+  slot.innerHTML = `<div class="card face-down"></div>${badgeHTML}`;
+}
+
+function renderCenter(ci) {
+  const slot = document.getElementById('center-' + ci);
+  const pile = G.centerPiles[ci];
+  // Preserve onclick on the slot div — remove only card children
+  const existingCards = slot.querySelectorAll('.card');
+  existingCards.forEach(c => c.remove());
+  const existingSpan = slot.querySelector('span');
+  if (existingSpan) existingSpan.remove();
+
+  if (!pile.length) {
+    slot.insertAdjacentHTML('beforeend', '<span>Center</span>');
+    return;
+  }
+  const card = top(pile);
+  let c = cardHTML(card, '', '');
+  c = c.replace(/^<div /, '<div style="position:absolute;top:0;left:0;" ');
+  slot.insertAdjacentHTML('beforeend', c);
+}
+
+function render() {
+  renderTableau('player-tableau', G.playerTableau, 'player');
+  renderTableau('cpu-tableau',    G.cpuTableau,    'cpu');
+  renderSpitSlot('player-spit-slot', G.playerSpit);
+  renderSpitSlot('cpu-spit-slot',    G.cpuSpit);
+  renderCenter(0);
+  renderCenter(1);
+
+  document.getElementById('player-card-count').textContent = countAll(G.playerTableau, G.playerSpit);
+  document.getElementById('cpu-card-count').textContent    = countAll(G.cpuTableau,    G.cpuSpit);
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
