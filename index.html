@@ -340,10 +340,10 @@ let aiActive = false;
 // ─── Helpers ──────────────────────────────────────────────────
 function isRed(card) { return card.suit === '♥' || card.suit === '♦'; }
 
-function top(pile) { return pile.length ? pile[pile.length - 1] : null; }
+function peek(pile) { return pile.length ? pile[pile.length - 1] : null; }
 
 function canPlay(card, centerPile) {
-  const t = top(centerPile);
+  const t = peek(centerPile);
   if (!t) return false;
   const d = Math.abs(card.value - t.value);
   return d === 1 || d === 12; // 12 handles Ace↔King wrap
@@ -417,7 +417,7 @@ function playerSelectCard(pileIdx) {
   if (G.phase !== 'playing' || G.over) return;
   const pile = G.playerTableau[pileIdx];
   if (!pile.length) return;
-  const t = top(pile);
+  const t = peek(pile);
   if (!t.faceUp) return;
 
   G.selected = (G.selected === pileIdx) ? null : pileIdx;
@@ -430,7 +430,7 @@ function handleCenterClick(ci) {
 
   const pile = G.playerTableau[G.selected];
   if (!pile.length) return;
-  const card = top(pile);
+  const card = peek(pile);
 
   if (!canPlay(card, G.centerPiles[ci])) {
     setStatus('Cannot play there — must be ±1 of the top card (Ace wraps with King).');
@@ -484,7 +484,7 @@ function aiTick() {
   for (let pi = 0; pi < 5; pi++) {
     const pile = G.cpuTableau[pi];
     if (!pile.length) continue;
-    const card = top(pile);
+    const card = peek(pile);
     if (!card.faceUp) continue;
 
     for (let ci = 0; ci < 2; ci++) {
@@ -496,7 +496,7 @@ function aiTick() {
           // Re-validate in case state changed
           const p = G.cpuTableau[pi];
           if (!p.length) { aiActive = false; showAIThinking(false); return; }
-          const c = top(p);
+          const c = peek(p);
           if (c.faceUp && canPlay(c, G.centerPiles[ci])) {
             p.pop();
             G.centerPiles[ci].push({ ...c, faceUp: true });
@@ -525,7 +525,7 @@ function startDeadlockCheck() {
 
 function hasMoves(tableau) {
   for (const pile of tableau) {
-    const c = top(pile);
+    const c = peek(pile);
     if (!c || !c.faceUp) continue;
     for (const cp of G.centerPiles)
       if (canPlay(c, cp)) return true;
@@ -621,7 +621,7 @@ function highlightCenterPiles() {
   }
   const pile = G.playerTableau[G.selected];
   if (!pile.length) return;
-  const card = top(pile);
+  const card = peek(pile);
   for (let ci = 0; ci < 2; ci++) {
     const slot = document.getElementById('center-' + ci);
     slot.classList.toggle('highlight', canPlay(card, G.centerPiles[ci]));
@@ -705,7 +705,7 @@ function renderCenter(ci) {
     slot.appendChild(span);
     return;
   }
-  const cardEl = makeCardEl(top(pile));
+  const cardEl = makeCardEl(peek(pile));
   cardEl.style.position = 'absolute';
   cardEl.style.top = '0';
   cardEl.style.left = '0';
