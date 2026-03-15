@@ -629,95 +629,87 @@ function highlightCenterPiles() {
 }
 
 // ─── Rendering ────────────────────────────────────────────────
-function cardHTML(card, extraClass, onclickAttr) {
-  const cls = ['card'];
-  if (!card.faceUp) {
-    cls.push('face-down');
-  } else {
-    cls.push(isRed(card) ? 'red' : 'black');
-    if (onclickAttr) cls.push('clickable');
+function makeCardEl(card) {
+  const el = document.createElement('div');
+  el.className = 'card ' + (card.faceUp ? (isRed(card) ? 'red' : 'black') : 'face-down');
+  if (card.faceUp) {
+    const v = VNAME[card.value];
+    const s = card.suit;
+    el.innerHTML =
+      `<span class="corner tl">${v}<br>${s}</span>` +
+      `<span class="suit-center">${s}</span>` +
+      `<span class="corner br">${v}<br>${s}</span>`;
   }
-  if (extraClass) cls.push(extraClass);
-
-  const onclick = onclickAttr ? ` onclick="${onclickAttr}"` : '';
-
-  if (!card.faceUp) {
-    return `<div class="${cls.join(' ')}"${onclick}></div>`;
-  }
-
-  const v = VNAME[card.value];
-  const s = card.suit;
-  return `<div class="${cls.join(' ')}"${onclick}>
-    <span class="corner tl">${v}<br>${s}</span>
-    <span class="suit-center">${s}</span>
-    <span class="corner br">${v}<br>${s}</span>
-  </div>`;
+  return el;
 }
 
 function renderTableau(containerId, tableau, owner) {
   const OVERLAP = 20;
-  let html = '';
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
 
   for (let pi = 0; pi < 5; pi++) {
     const pile = tableau[pi];
-    const h = pile.length ? (93 + (pile.length - 1) * OVERLAP) : 93;
-    html += `<div class="pile-col" style="height:${h}px">`;
+    const col = document.createElement('div');
+    col.className = 'pile-col';
+    col.style.height = (pile.length ? 93 + (pile.length - 1) * OVERLAP : 93) + 'px';
 
     if (!pile.length) {
-      html += '<div class="empty-pile"></div>';
+      const empty = document.createElement('div');
+      empty.className = 'empty-pile';
+      col.appendChild(empty);
     } else {
       for (let j = 0; j < pile.length; j++) {
         const card = pile[j];
         const isTop = j === pile.length - 1;
-        const isSelected = owner === 'player' && isTop && G.selected === pi;
-        const extraClass = isSelected ? 'selected' : '';
-        const onclick = (owner === 'player' && isTop && card.faceUp)
-          ? `playerSelectCard(${pi})`
-          : '';
+        const cardEl = makeCardEl(card);
+        cardEl.style.top = (j * OVERLAP) + 'px';
+        cardEl.style.zIndex = j;
 
-        const zIndex = ` style="top:${j * OVERLAP}px;z-index:${j};"`;
-        // Inject z-index and top into the card div
-        let c = cardHTML(card, extraClass, onclick);
-        c = c.replace('<div class="card', `<div class="card`);
-        // Insert style into first div tag
-        c = c.replace(/^<div /, `<div ${zIndex.trim()} `);
-        html += c;
+        if (isTop && card.faceUp && owner === 'player') {
+          cardEl.classList.add('clickable');
+          if (G.selected === pi) cardEl.classList.add('selected');
+          const pileIdx = pi;
+          cardEl.addEventListener('click', () => playerSelectCard(pileIdx));
+        }
+        col.appendChild(cardEl);
       }
     }
-    html += '</div>';
+    container.appendChild(col);
   }
-
-  document.getElementById(containerId).innerHTML = html;
 }
 
 function renderSpitSlot(slotId, pile) {
   const slot = document.getElementById(slotId);
+  slot.innerHTML = '';
   if (!pile.length) {
-    slot.innerHTML = 'Empty';
+    slot.textContent = 'Empty';
     return;
   }
-  // Show a face-down card on top + count badge
-  const badgeHTML = `<div class="card-badge">${pile.length}</div>`;
-  slot.innerHTML = `<div class="card face-down"></div>${badgeHTML}`;
+  const cardEl = document.createElement('div');
+  cardEl.className = 'card face-down';
+  slot.appendChild(cardEl);
+  const badge = document.createElement('div');
+  badge.className = 'card-badge';
+  badge.textContent = pile.length;
+  slot.appendChild(badge);
 }
 
 function renderCenter(ci) {
   const slot = document.getElementById('center-' + ci);
+  slot.innerHTML = '';
   const pile = G.centerPiles[ci];
-  // Preserve onclick on the slot div — remove only card children
-  const existingCards = slot.querySelectorAll('.card');
-  existingCards.forEach(c => c.remove());
-  const existingSpan = slot.querySelector('span');
-  if (existingSpan) existingSpan.remove();
-
   if (!pile.length) {
-    slot.insertAdjacentHTML('beforeend', '<span>Center</span>');
+    const span = document.createElement('span');
+    span.textContent = 'Center';
+    slot.appendChild(span);
     return;
   }
-  const card = top(pile);
-  let c = cardHTML(card, '', '');
-  c = c.replace(/^<div /, '<div style="position:absolute;top:0;left:0;" ');
-  slot.insertAdjacentHTML('beforeend', c);
+  const cardEl = makeCardEl(top(pile));
+  cardEl.style.position = 'absolute';
+  cardEl.style.top = '0';
+  cardEl.style.left = '0';
+  slot.appendChild(cardEl);
 }
 
 function render() {
