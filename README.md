@@ -1,0 +1,3 @@
+# spit
+
+A new repository.
